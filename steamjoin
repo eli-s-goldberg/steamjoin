@@ -1,0 +1,31 @@
+from functools import reduce
+from steam import WebAPI
+import numpy as np
+import pandas as pd
+
+api_key = "ENTERYOURSTEAMKEYHERE"
+
+api = WebAPI(key=api_key)
+
+steam_ids = ['76561198010547927', '76561197999937318', '76561198025119550',
+             '76561198021623707', '76561198006445224',
+             '76561198120096482']
+
+id_app_list = []
+df_overlap = pd
+for steam_id in steam_ids:
+    # call api
+    id_api_call = api.IPlayerService.GetOwnedGames_v1(appids_filter=False,
+                                                      include_played_free_games=False,
+                                                      include_appinfo=True,
+                                                      steamid=steam_id)['response']['games']
+    # some list comprehension to isolate names from json return
+    id_app_data_app_name = [x['name'] for x in id_api_call]
+    # append to list
+    id_app_list.append(id_app_data_app_name)
+
+# more list comprehension to array the lists
+id_app_list = [np.array(x) for x in id_app_list]
+
+# find overlapping arrays
+print("We have these games in common: ", reduce(np.intersect1d, (id_app_list)))
