@@ -1,30 +1,70 @@
 from functools import reduce
 from steam import WebAPI
+import urllib, json
 import numpy as np
 
 api_key = "ENTERYOURSTEAMKEYHERE"
 
 api = WebAPI(key=api_key)
 
-steam_ids = ['76561198010547927', '76561197999937318', '76561198025119550',
-             '76561198021623707', '76561198006445224',
-             '76561198120096482']
+steam_ids = ['76561198025119550',
+             '76561198006445224']
 
-id_app_list = []
 
-for steam_id in steam_ids:
-    # call api
-    id_api_call = api.IPlayerService.GetOwnedGames_v1(appids_filter=False,
-                                                      include_played_free_games=False,
-                                                      include_appinfo=True,
-                                                      steamid=steam_id)['response']['games']
-    # some list comprehension to isolate names from json return
-    id_app_data_app_name = [x['name'] for x in id_api_call]
-    # append to list
-    id_app_list.append(id_app_data_app_name)
+class SteamJoin:
 
-# more list comprehension to array the lists
-id_app_list = [np.array(x) for x in id_app_list]
+    def __init__(self, steam_ids):
+        self.steam_ids = steam_ids
 
-# find overlapping arrays
-print("We have these games in common: ", reduce(np.intersect1d, (id_app_list)))
+    def get_common_games(self):
+        app_name_track = []
+        app_id_track = []
+        for steam_id in steam_ids:
+            # call api
+            owned_games_api = api.IPlayerService.GetOwnedGames_v1(appids_filter=False,
+                                                                  include_played_free_games=False,
+                                                                  include_appinfo=True,
+                                                                  steamid=steam_id)['response']['games']
+
+            # some list comprehension to isolate names from json return
+            app_name = [x['name'] for x in owned_games_api]
+            app_id = [x['appid'] for x in owned_games_api]
+
+            app_name_track.append(app_name)
+            app_id_track.append(app_id)
+
+        # more list comprehension to array the lists
+        app_name_track = [np.array(x) for x in app_name_track]
+        app_id_track = [np.array(x) for x in app_id_track]
+
+        # find overlapping arrays
+        self.overlapping_games_names = reduce(np.intersect1d, (app_name_track))
+        self.overlapping_games_ids = reduce(np.intersect1d, (app_id_track))
+
+        return self.overlapping_games_names, self.overlapping_games_ids
+
+    def filter_by_multiplayer(self):
+        # find a way to filter the games by type
+        app_id_api = api
+        multiplayer_list = []
+        for game_id, game_name in zip(self.overlapping_games_ids, self.overlapping_games_names):
+            with urllib.request.urlopen(
+                    "https://store.steampowered.com/api/appdetails/?appids={}&cc=us&l=en".format(game_id)) as url:
+                data = json.loads(url.read().decode())
+                try:
+                    category_list = data[str(game_id)]['data']['categories']
+                    category_list = [x.get('description') for x in category_list if
+                                     x.get('description') == 'Multi-player']
+
+                    if category_list:
+                        multiplayer_list.append(game_name)
+                except:
+                    pass
+
+        self.overlapping_games_multiplayer_names = multiplayer_list
+        return self.overlapping_games_multiplayer_names
+
+
+steamjoin = SteamJoin(steam_ids=steam_ids)
+steamjoin.get_common_games()
+steamjoin.filter_by_multiplayer()
