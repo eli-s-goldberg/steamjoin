@@ -1,7 +1,6 @@
 from functools import reduce
 from steam import WebAPI
 import numpy as np
-import pandas as pd
 
 api_key = "ENTERYOURSTEAMKEYHERE"
 
@@ -12,7 +11,7 @@ steam_ids = ['76561198010547927', '76561197999937318', '76561198025119550',
              '76561198120096482']
 
 id_app_list = []
-df_overlap = pd
+
 for steam_id in steam_ids:
     # call api
     id_api_call = api.IPlayerService.GetOwnedGames_v1(appids_filter=False,
